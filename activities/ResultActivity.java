@@ -1,4 +1,4 @@
-package wszolek.lauren.imagesearch;
+package wszolek.lauren.imagesearch.activities;
 
 import android.os.Bundle;
 import android.support.v4.view.MenuItemCompat;
@@ -21,19 +21,28 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 
 import cz.msebera.android.httpclient.Header;
+import wszolek.lauren.imagesearch.adapters.ImageResultAdapter;
+import wszolek.lauren.imagesearch.R;
+import wszolek.lauren.imagesearch.models.ImageResult;
 
 public class ResultActivity extends AppCompatActivity {
     private GridView gvResults;
     private ArrayList<ImageResult> imageResults;
-    private ImageResultAdapter irAdapter;
+    private ImageResultAdapter aImageResults;
     private static final String BASE_URL = "https://ajax.googleapis.com/ajax/services/search/images?v=1.0&rsz=8&q=";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        imageResults = new ArrayList<ImageResult>();
-        irAdapter = new ImageResultAdapter(this, imageResults);
+        imageResults = new ArrayList<>();
+        aImageResults = new ImageResultAdapter(this, imageResults);
+        setupViews();
+        gvResults.setAdapter(aImageResults);
+    }
+
+    private void setupViews(){
+        gvResults = (GridView) findViewById(R.id.gvResults);
     }
 
     @Override
@@ -46,7 +55,6 @@ public class ResultActivity extends AppCompatActivity {
         searchView.setOnQueryTextListener(new OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                // perform query here
                 searchImages(query);
                 return true;
             }
@@ -76,22 +84,14 @@ public class ResultActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                     try {
-                        JSONArray results = null;
-                        JSONObject imagesJSON = response.getJSONObject("responseData");
-                        if(response != null){
-                            results = imagesJSON.getJSONArray("results");
-                            // results will never be null, if no results length with be 0
-                            for(int i = 0; i < results.length(); i++) {
-                                JSONObject imageJSON = results.getJSONObject(i);
-                                ImageResult image = new ImageResult();
-                                image.height = Integer.getInteger(imageJSON.getString("height"));
-                                image.width = Integer.getInteger(imageJSON.getString("width"));
-                                image.url = imageJSON.getString("url");
-                                image.tbUrl = imageJSON.getString("tbUrl");
-                            }
+                        if(response != null) {
+                            JSONObject imagesJSON = response.getJSONObject("responseData"); // don't I need this for pagination?
+                            JSONArray results = imagesJSON.getJSONArray("results");
+                            imageResults.clear(); // clear existing image results from the array (in cases with new search)
+                            imageResults.addAll(ImageResult.fromJsonArray(results));
+                            aImageResults.notifyDataSetChanged();
                         }
                     } catch (JSONException e) {
-                        // Invalid JSON format, show appropriate error.
                         e.printStackTrace();
                     }
                 }
